@@ -1,0 +1,923 @@
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/time.h>
+#include "sm2.h"
+#include "sm3.h"
+#include "sm4.h"
+#include "sm4_ssl.h"
+#include "sm3_ssl.h"
+#include "debug.h"
+#include "openssl/evp.h"
+
+// key pair one
+u8 private_1[ECC_NUMWORD] =
+{
+    0x39, 0x45, 0x20, 0x8f,
+    0x7b, 0x21, 0x44, 0xb1,
+    0x3f, 0x36, 0xe3, 0x8a,
+    0xc6, 0xd3, 0x9f, 0x95,
+    0x88, 0x93, 0x93, 0x69,
+    0x28, 0x60, 0xb5, 0x1a,
+    0x42, 0xfb, 0x81, 0xef,
+    0x4d, 0xf7, 0xc5, 0xb8
+};
+
+u8 public_1[ECC_NUMWORD * 2] =
+{
+    0x09, 0xF9, 0xDF, 0x31,
+    0x1E, 0x54, 0x21, 0xA1,
+    0x50, 0xDD, 0x7D, 0x16,
+    0x1E, 0x4B, 0xC5, 0xC6,
+    0x72, 0x17, 0x9F, 0xAD,
+    0x18, 0x33, 0xFC, 0x07,
+    0x6B, 0xB0, 0x8F, 0xF3,
+    0x56, 0xF3, 0x50, 0x20,
+    0xCC, 0xEA, 0x49, 0x0C,
+    0xE2, 0x67, 0x75, 0xA5,
+    0x2D, 0xC6, 0xEA, 0x71,
+    0x8C, 0xC1, 0xAA, 0x60,
+    0x0A, 0xED, 0x05, 0xFB,
+    0xF3, 0x5E, 0x08, 0x4A,
+    0x66, 0x32, 0xF6, 0x07,
+    0x2D, 0xA9, 0xAD, 0x13,
+};
+
+
+//key pair two
+u8 private_2[ECC_NUMWORD] =
+{
+    0x1e, 0x1f, 0x93, 0x7d,
+    0xaa, 0x9d, 0xa9, 0x9d,
+    0x5a, 0xd5, 0x78, 0xbb,
+    0x4f, 0x31, 0x42, 0x4e,
+    0x17, 0xeb, 0x01, 0x4b,
+    0x60, 0x66, 0x56, 0x92,
+    0xa0, 0x98, 0x32, 0x92,
+    0x12, 0xce, 0x01, 0x19
+};
+
+u8 public_2[ECC_NUMWORD * 2] =
+{
+    0xd4, 0x02, 0xbc, 0x4e,
+    0x94, 0x29, 0x19, 0xe4,
+    0x8b, 0x17, 0x2b, 0x5a,
+    0x80, 0x22, 0xbd, 0x13,
+    0x83, 0x75, 0xf2, 0x42,
+    0xcf, 0xcf, 0x37, 0x74,
+    0x3b, 0xcd, 0x0a, 0xc9,
+    0xc7, 0x56, 0xee, 0x35,
+    0x89, 0x58, 0x86, 0xa4,
+    0x50, 0x10, 0xe5, 0x54,
+    0x55, 0x78, 0x1a, 0xba,
+    0x6b, 0x01, 0xc2, 0x20,
+    0x55, 0x2a, 0x51, 0x96,
+    0xad, 0x9d, 0x1d, 0x67,
+    0xe1, 0x2c, 0x4a, 0x7d,
+    0xf8, 0x60, 0x9a, 0xb8
+};
+
+//key pair three
+u8 private_3[ECC_NUMWORD] =
+{
+    0x81, 0xeb, 0x26, 0xe9,
+    0x41, 0xbb, 0x5a, 0xf1,
+    0x6d, 0xf1, 0x16, 0x49,
+    0x5f, 0x90, 0x69, 0x52,
+    0x72, 0xae, 0x2c, 0xd6,
+    0x3d, 0x6c, 0x4a, 0xe1,
+    0x67, 0x84, 0x18, 0xbe,
+    0x48, 0x23, 0x00, 0x29
+};
+
+u8 public_3[ECC_NUMWORD * 2] =
+{
+    0x16, 0x0E, 0x12, 0x89,
+    0x7D, 0xF4, 0xED, 0xB6,
+    0x1D, 0xD8, 0x12, 0xFE,
+    0xB9, 0x67, 0x48, 0xFB,
+    0xD3, 0xCC, 0xF4, 0xFF,
+    0xE2, 0x6A, 0xA6, 0xF6,
+    0xDB, 0x95, 0x40, 0xAF,
+    0x49, 0xC9, 0x42, 0x32,
+    0x4A, 0x7D, 0xAD, 0x08,
+    0xBB, 0x9A, 0x45, 0x95,
+    0x31, 0x69, 0x4B, 0xEB,
+    0x20, 0xAA, 0x48, 0x9D,
+    0x66, 0x49, 0x97, 0x5E,
+    0x1B, 0xFC, 0xF8, 0xC4,
+    0x74, 0x1B, 0x78, 0xB4,
+    0xB2, 0x23, 0x00, 0x7F,
+};
+//key pair four
+u8 private_4[ECC_NUMWORD] =
+{
+    0x59, 0x27, 0x6e, 0x27,
+    0xd5, 0x06, 0x86, 0x1a,
+    0x16, 0x68, 0x0f, 0x3a,
+    0xd9, 0xc0, 0x2d, 0xcc,
+    0xef, 0x3c, 0xc1, 0xfa,
+    0x3c, 0xdb, 0xe4, 0xce,
+    0x6d, 0x54, 0xb8, 0x0d,
+    0xea, 0xc1, 0xbc, 0x21
+};
+
+u8 public_4[ECC_NUMWORD * 2] =
+{
+    0x04, 0xEB, 0xFC, 0x71,
+    0x8E, 0x8D, 0x17, 0x98,
+    0x62, 0x04, 0x32, 0x26,
+    0x8E, 0x77, 0xFE, 0xB6,
+    0x41, 0x5E, 0x2E, 0xDE,
+    0x0E, 0x07, 0x3C, 0x0F,
+    0x4F, 0x64, 0x0E, 0xCD,
+    0x2E, 0x14, 0x9A, 0x73,
+    0xE8, 0x58, 0xF9, 0xD8,
+    0x1E, 0x54, 0x30, 0xA5,
+    0x7B, 0x36, 0xDA, 0xAB,
+    0x8F, 0x95, 0x0A, 0x3C,
+    0x64, 0xE6, 0xEE, 0x6A,
+    0x63, 0x09, 0x4D, 0x99,
+    0x28, 0x3A, 0xFF, 0x76,
+    0x7E, 0x12, 0x4D, 0xF0
+};
+
+u8 private_5[ECC_NUMWORD] =
+{
+    0x78, 0x51, 0x29, 0x91,
+    0x7d, 0x45, 0xa9, 0xea,
+    0x54, 0x37, 0xa5, 0x93,
+    0x56, 0xb8, 0x23, 0x38,
+    0xea, 0xad, 0xda, 0x6c,
+    0xeb, 0x19, 0x90, 0x88,
+    0xf1, 0x4a, 0xe1, 0x0d,
+    0xef, 0xa2, 0x29, 0xb5
+};
+
+u8 public_5[ECC_NUMWORD * 2] =
+{
+    0x6A, 0xE8, 0x48, 0xC5,
+    0x7C, 0x53, 0xC7, 0xB1,
+    0xB5, 0xFA, 0x99, 0xEB,
+    0x22, 0x86, 0xAF, 0x07,
+    0x8B, 0xA6, 0x4C, 0x64,
+    0x59, 0x1B, 0x8B, 0x56,
+    0x6F, 0x73, 0x57, 0xD5,
+    0x76, 0xF1, 0x6D, 0xFB,
+    0xEE, 0x48, 0x9D, 0x77,
+    0x16, 0x21, 0xA2, 0x7B,
+    0x36, 0xC5, 0xC7, 0x99,
+    0x20, 0x62, 0xE9, 0xCD,
+    0x09, 0xA9, 0x26, 0x43,
+    0x86, 0xF3, 0xFB, 0xEA,
+    0x54, 0xDF, 0xF6, 0x93,
+    0x05, 0x62, 0x1C, 0x4D
+};
+
+//encryption standard
+u8 msg[] =
+{
+    0x65, 0x6e, 0x63,
+    0x72, 0x79, 0x70, 0x74,
+    0x69, 0x6f, 0x6e, 0x20,
+    0x73, 0x74, 0x61, 0x6e,
+    0x64, 0x61, 0x72, 0x64
+};
+
+//message digest
+u8 msg_dst[] =
+{
+    0x6d, 0x65, 0x73, 0x73,
+    0x61, 0x67, 0x65, 0x20,
+    0x64, 0x69, 0x67, 0x65,
+    0x73, 0x74
+};
+void test_public_key(ecc_point *pubKey)
+{
+
+    if(sm2_is_valid_public_key(pubKey))
+    {
+        printf("ok\n");
+    }
+    else
+    {
+        printf("wrong key\n");
+        exit(0);
+    }
+}
+// test SM2
+void test_sm2_public_key()
+{
+    printf("--test 2-----------\n");
+    printf("use private to produce public key:\n");
+
+    ecc_point pub[1];
+
+    sm2_make_pubkey(private_1, pub);
+
+    test_public_key(pub);
+    if(debug_cmp(pub, public_1, ECC_NUMWORD * 2) == 0)
+    {
+        printf("key pair 1 is OK\n");
+    }
+    else
+    {
+        printf("public key 1 do not match\n");
+        exit(0);
+    }
+
+    sm2_make_pubkey(private_2, pub);
+    for(int i = 0; i < ECC_NUMWORD * 2; i++)
+    {
+        u8 *p = (u8 *)pub->x;
+        if(public_2[i] != *(p + i))
+        {
+            printf("public key 1 do not match\n");
+            printf("the %d byte is wrong\n", i);
+            exit(0);
+        }
+    }
+    printf("key pair 2 is OK\n");
+    printf("\n");
+}
+
+void test_sm2_make_key()
+{
+    printf("--test 1-----------\n");
+    printf("produce key pair:\n");
+    u8 pri[ECC_NUMWORD];
+    ecc_point pub[1];
+    int i = 5;
+
+    while(i--)
+    {
+        speed_test("aa", 2);
+        sm2_make_keypair(pri, pub);
+    }
+
+    printf("\n");
+}
+
+void test_sm2_sign()
+{
+    printf("--test 3-----------\n");
+
+    u8 r[ECC_NUMWORD];
+    u8 s[ECC_NUMWORD];
+    int ret = -1;
+
+    sm2_sign(private_1, (ecc_point *)public_1, msg_dst, 14, r, s);
+    //printHex("r", r, 32);
+    //printHex("s", s, 32);
+    //exit(0);
+    ret = sm2_verify((ecc_point *)public_1, msg_dst, 14, r, s);
+    if(ret)
+        printf("verify err ret = %d\n", ret);
+    else
+        printf("verify ok\n");
+
+    //printHex("M", M, Mlen);
+    return;
+}
+
+//userA:private_3
+//userB private_5
+void test_sm2_dh()
+{
+    printf("--test 4-----------\n");
+
+    int ret = 0;
+    u8 Za[32];
+    u8 Zb[32];
+
+    sm3_z(USER_ID, 16, (ecc_point *)public_3, Za);
+    sm3_z(USER_ID, 16, (ecc_point *)public_5, Zb);
+
+
+    u8 ra[32] =
+    {
+        0xd4, 0xde, 0x15, 0x47,
+        0x4d, 0xb7, 0x4d, 0x06,
+        0x49, 0x1c, 0x44, 0x0d,
+        0x30, 0x5e, 0x01, 0x24,
+        0x00, 0x99, 0x0f, 0x3e,
+        0x39, 0x0c, 0x7e, 0x87,
+        0x15, 0x3c, 0x12, 0xdb,
+        0x2e, 0xa6, 0x0b, 0xb3
+    };
+
+    ecc_point Ra[1];
+    //a
+    printf("step 1:\n");
+    ret = sm2_ke_init_i(ra, Ra);
+    if(ret != 0)
+    {
+        printf("init_I error\n");
+        exit(0);
+    }
+    u8 rb[32] =
+    {
+        0x7e, 0x07, 0x12, 0x48,
+        0x14, 0xb3, 0x09, 0x48,
+        0x91, 0x25, 0xea, 0xed,
+        0x10, 0x11, 0x13, 0x16,
+        0x4e, 0xbf, 0x0f, 0x34,
+        0x58, 0xc5, 0xbd, 0x88,
+        0x33, 0x5c, 0x1f, 0x9d,
+        0x59, 0x62, 0x43, 0xd6
+    };
+    ecc_point Rb[1];
+
+    ecc_point V[1];
+    u8 K[16];
+    u32 klen = 16;
+    u8 Sb[32];
+    u8 Sa[32];
+    printf("step 2:\n");
+    ret = sm2_ke_re_i(rb, private_5, Ra, (ecc_point *)public_3,
+                      Za, Zb, V, K, klen, Rb, Sb);
+    if(ret != 0)
+    {
+        printf("Re_I error\n");
+        exit(0);
+    }
+    //printHex("Sb", Sb, 32);
+    printf("step 3:\n");
+    ret = sm2_ke_init_ii(ra, private_3,
+                         Ra, Rb, (ecc_point *)public_5,
+                         Za, Zb,
+                         Sb,
+                         K,  klen,
+                         Sa);
+    if(ret != 0)
+    {
+        printf("Init_II error\n");
+        exit(0);
+    }
+    printf("step 4:\n");
+    ret = sm2_ke_re_ii(V, Ra, Rb,
+                       Za, Zb,
+                       Sa);
+    if(ret != 0)
+    {
+        printf("Re_II error\n");
+        exit(0);
+    }
+
+    printf("key exchange success\n");
+}
+
+void test_sm2_encrypt()
+{
+    printf("--test 2-----------\n");
+    printf("encrypt:\n");
+
+    u8  msg_c[500];
+    u8 msg1[19];
+    u32 len = 0;
+
+    sm2_encrypt((ecc_point *)public_1, msg, 19, msg_c, &len);
+
+    //printHex("C", msg_c, len);
+    printf("\ndecrypt:\n");
+    sm2_decrypt(private_1, msg_c, 115, msg1, &len);
+    if(debug_cmp(msg, msg1, len) == 0)
+    {
+        printf("decrypt OK\n");
+    }
+    else
+    {
+        printf("decrypt fail\n");
+        exit(0);
+    }
+}
+
+void test_sm2()
+{
+    test_sm2_make_key();
+
+    test_sm2_public_key();
+
+    test_sm2_sign();
+
+    test_sm2_dh();
+
+    test_sm2_encrypt();
+}
+
+// test SM3
+void test_sm3()
+{
+    printf("---SM3:\n");
+    struct timeval start;
+    struct timeval end;
+    //sample one
+    u8 msg1[3] =
+    {
+        0x61, 0x62, 0x63
+    };
+
+    u8 msg1_hash[SM3_DATA_LEN] =
+    {
+        0x66, 0xc7, 0xf0, 0xf4,
+        0x62, 0xee, 0xed, 0xd9,
+        0xd1, 0xf2, 0xd4, 0x6b,
+        0xdc, 0x10, 0xe4, 0xe2,
+        0x41, 0x67, 0xc4, 0x87,
+        0x5c, 0xf2, 0xf7, 0xa2,
+        0x29, 0x7d, 0xa0, 0x2b,
+        0x8f, 0x4b, 0xa8, 0xe0
+    };
+
+
+
+    //sample two
+    u8 msg2[512] = {0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64
+                   };
+    u8 msg2_hash[SM3_DATA_LEN] =
+    {
+        0xde, 0xbe, 0x9f, 0xf9,
+        0x22, 0x75, 0xb8, 0xa1,
+        0x38, 0x60, 0x48, 0x89,
+        0xc1, 0x8e, 0x5a, 0x4d,
+        0x6f, 0xdb, 0x70, 0xe5,
+        0x38, 0x7e, 0x57, 0x65,
+        0x29, 0x3d, 0xcb, 0xa3,
+        0x9c, 0x0c, 0x57, 0x32
+    };
+
+    u8 hash[SM3_DATA_LEN];
+
+    sm3_ctx ctx[1];
+    gettimeofday(&start, NULL);
+    sm3_init(ctx);
+    sm3_update(ctx, msg1, 3);
+    sm3_final(ctx, hash);
+    gettimeofday(&end, NULL);
+
+    if(debug_cmp(msg1_hash, hash, SM3_DATA_LEN) == 0)
+    {
+        printf("test 1: ok\n");
+        printf("use time %lu us\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
+    }
+    else
+    {
+        printf("test 1: fail\n");
+        exit(0);
+    }
+
+    gettimeofday(&start, NULL);
+    sm3_init(ctx);
+    sm3_update(ctx, msg2, 64);
+    sm3_final(ctx, hash);
+    gettimeofday(&end, NULL);
+    if(debug_cmp(msg2_hash, hash, SM3_DATA_LEN) == 0)
+    {
+        printf("test 2: ok\n");
+        printf("use time %lu us\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
+    }
+    else
+    {
+        printf("test 2: fail\n");
+        exit(0);
+    }
+    printf("---end\n\n");
+}
+
+
+int sm3_hash_ssl(const uint8_t *msg, size_t len, uint8_t *hash, uint32_t *hash_len)
+{
+    EVP_MD_CTX *md_ctx;
+    const EVP_MD *md;
+
+    md = EVP_sm3();
+    md_ctx = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(md_ctx, md, NULL);
+    EVP_DigestUpdate(md_ctx, msg, len);
+    EVP_DigestFinal_ex(md_ctx, hash, hash_len);
+    EVP_MD_CTX_free(md_ctx);
+    return 0;
+}
+
+void test_sm3_ssl()
+{
+    printf("---SM3_SSL:\n");
+    struct timeval start;
+    struct timeval end;
+    //sample one
+    u8 msg1[3] =
+    {
+        0x61, 0x62, 0x63
+    };
+
+    u8 msg1_hash[SM3_DATA_LEN] =
+    {
+        0x66, 0xc7, 0xf0, 0xf4,
+        0x62, 0xee, 0xed, 0xd9,
+        0xd1, 0xf2, 0xd4, 0x6b,
+        0xdc, 0x10, 0xe4, 0xe2,
+        0x41, 0x67, 0xc4, 0x87,
+        0x5c, 0xf2, 0xf7, 0xa2,
+        0x29, 0x7d, 0xa0, 0x2b,
+        0x8f, 0x4b, 0xa8, 0xe0
+    };
+
+
+
+    //sample two
+    u8 msg2[512] = {0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64
+                   };
+    u8 msg2_hash[SM3_DATA_LEN] =
+    {
+        0xde, 0xbe, 0x9f, 0xf9,
+        0x22, 0x75, 0xb8, 0xa1,
+        0x38, 0x60, 0x48, 0x89,
+        0xc1, 0x8e, 0x5a, 0x4d,
+        0x6f, 0xdb, 0x70, 0xe5,
+        0x38, 0x7e, 0x57, 0x65,
+        0x29, 0x3d, 0xcb, 0xa3,
+        0x9c, 0x0c, 0x57, 0x32
+    };
+
+    u8 hash[SM3_DATA_LEN];
+    gettimeofday(&start, NULL);
+    SM3(msg1, 3, hash);
+    gettimeofday(&end, NULL);
+
+    if(debug_cmp(msg1_hash, hash, SM3_DATA_LEN) == 0)
+    {
+        printf("test 1: ok\n");
+        printf("use time %lu us\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
+    }
+    else
+    {
+        printf("test 1: fail\n");
+        exit(0);
+    }
+
+    gettimeofday(&start, NULL);
+    SM3(msg2, 64, hash);
+    gettimeofday(&end, NULL);
+    if(debug_cmp(msg2_hash, hash, SM3_DATA_LEN) == 0)
+    {
+        printf("test 2: ok\n");
+        printf("use time %lu us\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
+    }
+    else
+    {
+        printf("test 2: fail\n");
+        exit(0);
+    }
+    printf("---end\n\n");
+}
+
+void test_sm3_ssl_api()
+{
+    printf("---SM3_SSL_API:\n");
+    struct timeval start;
+    struct timeval end;
+    //sample one
+    u8 msg1[3] =
+    {
+        0x61, 0x62, 0x63
+    };
+
+    u8 msg1_hash[SM3_DATA_LEN] =
+    {
+        0x66, 0xc7, 0xf0, 0xf4,
+        0x62, 0xee, 0xed, 0xd9,
+        0xd1, 0xf2, 0xd4, 0x6b,
+        0xdc, 0x10, 0xe4, 0xe2,
+        0x41, 0x67, 0xc4, 0x87,
+        0x5c, 0xf2, 0xf7, 0xa2,
+        0x29, 0x7d, 0xa0, 0x2b,
+        0x8f, 0x4b, 0xa8, 0xe0
+    };
+
+
+
+    //sample two
+    u8 msg2[512] = {0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64,
+                    0x61, 0x62, 0x63, 0x64
+                   };
+    u8 msg2_hash[SM3_DATA_LEN] =
+    {
+        0xde, 0xbe, 0x9f, 0xf9,
+        0x22, 0x75, 0xb8, 0xa1,
+        0x38, 0x60, 0x48, 0x89,
+        0xc1, 0x8e, 0x5a, 0x4d,
+        0x6f, 0xdb, 0x70, 0xe5,
+        0x38, 0x7e, 0x57, 0x65,
+        0x29, 0x3d, 0xcb, 0xa3,
+        0x9c, 0x0c, 0x57, 0x32
+    };
+
+    u8 hash[SM3_DATA_LEN];
+    uint32_t len;
+    gettimeofday(&start, NULL);
+    sm3_hash_ssl(msg1, 3, hash, &len);
+    gettimeofday(&end, NULL);
+
+    if(debug_cmp(msg1_hash, hash, SM3_DATA_LEN) == 0)
+    {
+        printf("test 1: ok\n");
+        printf("use time %lu us\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
+    }
+    else
+    {
+        printf("test 1: fail\n");
+        exit(0);
+    }
+
+    gettimeofday(&start, NULL);
+    sm3_hash_ssl(msg2, 64, hash, &len);
+    gettimeofday(&end, NULL);
+    if(debug_cmp(msg2_hash, hash, SM3_DATA_LEN) == 0)
+    {
+        printf("test 2: ok\n");
+        printf("use time %lu us\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
+    }
+    else
+    {
+        printf("test 2: fail\n");
+        exit(0);
+    }
+    printf("---end\n\n");
+}
+
+void test_sm4()
+{
+    struct timeval start;
+    struct timeval end;
+    printf("---SM4:\n");
+    u8 plain_txt[] =
+    {
+        0x01, 0x23, 0x45, 0x67,
+        0x89, 0xab, 0xcd, 0xef,
+        0xfe, 0xdc, 0xba, 0x98,
+        0x76, 0x54, 0x32, 0x10
+    };
+
+    u8 key[] =
+    {
+        0x01, 0x23, 0x45, 0x67,
+        0x89, 0xab, 0xcd, 0xef,
+        0xfe, 0xdc, 0xba, 0x98,
+        0x76, 0x54, 0x32, 0x10
+    };
+
+    u8 encrypt_txt1[] =
+    {
+        0x68, 0x1e, 0xdf, 0x34,
+        0xd2, 0x06, 0x96, 0x5e,
+        0x86, 0xb3, 0xe9, 0x4f,
+        0x53, 0x6e, 0x42, 0x46
+    };
+
+    u8 encrypt_txt2[] =
+    {
+        0x59, 0x52, 0x98, 0xc7,
+        0xc6, 0xfd, 0x27, 0x1f,
+        0x04, 0x02, 0xf8, 0x04,
+        0xc3, 0x3d, 0x3f, 0x66
+    };
+
+    u8 out[16];
+
+    gettimeofday(&start, NULL);
+    sm4_ecb_encrypt(key, plain_txt, 16, out);
+    gettimeofday(&end, NULL);
+    if(debug_cmp(encrypt_txt1, out, 16) == 0)
+    {
+        printf("encrypt 1: ok\n");
+        printf("use time %lu us\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
+    }
+    else
+    {
+        printf("encrypt 1: fail\n");
+    }
+
+    gettimeofday(&start, NULL);
+    sm4_ecb_decrypt(key, encrypt_txt1, 16, out);
+    gettimeofday(&end, NULL);
+
+    if(debug_cmp(plain_txt, out, 16) == 0)
+    {
+        printf("decrypt 1: ok\n");
+        printf("use time %lu us\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
+    }
+    else
+    {
+        printf("decrypt 1: fail\n");
+    }
+
+    gettimeofday(&start, NULL);
+    for(int i = 0; i < 1000000; i++)
+    {
+        sm4_ecb_encrypt(key, plain_txt, 16, out);
+        memcpy(plain_txt, out, 16);
+    }
+    gettimeofday(&end, NULL);
+
+    if(debug_cmp(encrypt_txt2, out, 16) == 0)
+    {
+        printf("encrypt 2: ok\n");
+        printf("use time %lu us\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
+    }
+    else
+    {
+        printf("encrypt 2: fail\n");
+    }
+
+    printf("---end\n\n");
+}
+
+
+void test_sm4_ssl()
+{
+    struct timeval start;
+    struct timeval end;
+    printf("---SM4_SSL:\n");
+    u8 plain_txt[] =
+    {
+        0x01, 0x23, 0x45, 0x67,
+        0x89, 0xab, 0xcd, 0xef,
+        0xfe, 0xdc, 0xba, 0x98,
+        0x76, 0x54, 0x32, 0x10
+    };
+
+    u8 key[] =
+    {
+        0x01, 0x23, 0x45, 0x67,
+        0x89, 0xab, 0xcd, 0xef,
+        0xfe, 0xdc, 0xba, 0x98,
+        0x76, 0x54, 0x32, 0x10
+    };
+
+    u8 encrypt_txt1[] =
+    {
+        0x68, 0x1e, 0xdf, 0x34,
+        0xd2, 0x06, 0x96, 0x5e,
+        0x86, 0xb3, 0xe9, 0x4f,
+        0x53, 0x6e, 0x42, 0x46
+    };
+
+    u8 encrypt_txt2[] =
+    {
+        0x59, 0x52, 0x98, 0xc7,
+        0xc6, 0xfd, 0x27, 0x1f,
+        0x04, 0x02, 0xf8, 0x04,
+        0xc3, 0x3d, 0x3f, 0x66
+    };
+
+    u8 out[16];
+
+    gettimeofday(&start, NULL);
+    SM4_ecb_encrypt(key, plain_txt, 16, out);
+    gettimeofday(&end, NULL);
+    if(debug_cmp(encrypt_txt1, out, 16) == 0)
+    {
+        printf("encrypt 1: ok\n");
+        printf("use time %lu us\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
+    }
+    else
+    {
+        printf("encrypt 1: fail\n");
+    }
+
+    gettimeofday(&start, NULL);
+    SM4_ecb_decrypt(key, encrypt_txt1, 16, out);
+    gettimeofday(&end, NULL);
+
+    if(debug_cmp(plain_txt, out, 16) == 0)
+    {
+        printf("decrypt 1: ok\n");
+        printf("use time %lu us\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
+    }
+    else
+    {
+        printf("decrypt 1: fail\n");
+    }
+
+    gettimeofday(&start, NULL);
+    for(int i = 0; i < 1000000; i++)
+    {
+        SM4_ecb_encrypt(key, plain_txt, 16, out);
+        memcpy(plain_txt, out, 16);
+    }
+    gettimeofday(&end, NULL);
+
+    if(debug_cmp(encrypt_txt2, out, 16) == 0)
+    {
+        printf("encrypt 2: ok\n");
+        printf("use time %lu us\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
+    }
+    else
+    {
+        printf("encrypt 2: fail\n");
+    }
+
+    printf("---end\n\n");
+}
+
+#define NUM_MAX 2000
+#define ROUND_MAX 10
+
+void compare_sm3()
+{
+    uint32_t len;
+    int data[NUM_MAX];
+    uint8_t hash[32];
+    struct timeval start1;
+    struct timeval end1;
+    struct timeval start2;
+    struct timeval end2;
+    struct timeval start3;
+    struct timeval end3;
+    srand((unsigned)time(NULL));
+    for(int i = 0; i < NUM_MAX; i++)
+    {
+        data[i] = rand();
+    }
+
+
+    for(int i = 1; i < NUM_MAX * 4; i++)
+    {
+        for(int j = 0; j < 1; j++)
+        {
+            gettimeofday(&start1, NULL);
+            sm3((uint8_t *)data, i, hash);
+            gettimeofday(&end1, NULL);
+
+            gettimeofday(&start2, NULL);
+            sm3_hash_ssl((uint8_t *)data, i, hash, &len);
+            gettimeofday(&end2, NULL);
+
+            gettimeofday(&start3, NULL);
+            SM3((uint8_t *)data, i, hash);
+            gettimeofday(&end3, NULL);
+        }
+        printf("[%d] use time %lu us  %lu us %lu us\n", i, ((end1.tv_sec - start1.tv_sec) * 1000000 + end1.tv_usec - start1.tv_usec),
+               ((end2.tv_sec - start2.tv_sec) * 1000000 + end2.tv_usec - start2.tv_usec),
+               ((end3.tv_sec - start3.tv_sec) * 1000000 + end3.tv_usec - start3.tv_usec));
+    }
+}
+
+int main(int argc, char **argv)
+{
+    printf("we will test SM2,SM3,SM4\n");
+    //test_sm2();
+    test_sm3();
+    test_sm3_ssl();
+    test_sm3_ssl_api();
+    compare_sm3();
+
+    //test_sm4();
+    //test_sm4_ssl();
+}
